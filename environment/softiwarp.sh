@@ -1,5 +1,12 @@
 #!/bin/bash
-USER="ubuntu"
+USER="miguelsilvalac15"
+
+# Dependencies
+# Build essentials
+sudo apt-get install build-essential git cmake pkg-config libnl-3-dev libnl-route-3-dev
+
+# RDMA libraries
+sudo apt-get install libibverbs1  libibverbs-dev  librdmacm-dev  librdmacm1  ibverbs-utils  rdmacm-utils ibutils libibcommon1 ibdapl2 ibsim-utils libcxgb3-1 libibmad5 libibumad3 libmlx4-1 libmthca1 libnes1
 
 # get and build softiwarp kernel
 git clone https://github.com/zrlio/softiwarp
