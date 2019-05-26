@@ -40,7 +40,7 @@ void createValueMemcached(char *key, char *value, memcached_st *memc) {
   if(rc == MEMCACHED_SUCCESS)
     printf("Key stored successfully\n");
   else
-    perror("Could not store key\n");
+    fprintf(stderr, "Couldn't store key: %s\n", memcached_strerror(memc, rc));
 }
 
 int main(int argc, char **argv) {

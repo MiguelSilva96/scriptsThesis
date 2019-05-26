@@ -6,9 +6,14 @@
 #include <sys/mman.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <pthread.h>
 
 #define VALUES 100
 #define SIZE 4000000
+
+int running = 1;
+pthread_t tid;
+int seconds = -1;
 
 /* Return 1 if the difference is negative, otherwise 0.  */
 int timeval_subtract(struct timeval *result, struct timeval *t2, struct timeval *t1) {
@@ -35,14 +40,16 @@ void getAndProcessValue(char *key, memcached_st *memc) {
     fprintf(stderr, "Could not retreive key: %s\n", key);
 }
 
-struct timeval getFromMemcached() {
+void* getFromMemcached(void *arg) {
   memcached_server_st *servers = NULL;
   memcached_st *memc;
   memcached_return rc;
   struct timeval stop, start, diff;
 
   char key[32];
-  int i;
+  int i, operations = 0;
+  double throughput;
+  double timeinMillis;
 
   memc = memcached_create(NULL);
   servers = memcached_server_list_append(servers, "localhost", 12345, &rc);
@@ -52,14 +59,35 @@ struct timeval getFromMemcached() {
   else
     fprintf(stderr, "Could not add server: %s\n", memcached_strerror(memc, rc));
   gettimeofday(&start, NULL);
-  for(i = 0; i < VALUES; i++) {
-    key[0] = '\0';
-    sprintf(key, "value%d", i);
-    getAndProcessValue(key, memc);
+  // run once
+  if (seconds == -1) {
+    for(i = 0; i < VALUES; i++) {
+      key[0] = '\0';
+      sprintf(key, "value%d", i);
+      getAndProcessValue(key, memc);
+    }
+    gettimeofday(&stop, NULL);
+    timeval_subtract(&diff, &stop, &start);
+    timeinMillis = diff.tv_sec*1000.f + diff.tv_usec/1000.f;
+    printf("Took %f ms\n", timeinMillis);
+  } else {
+    // run for X seconds
+    while (running) {
+      for(i = 0; i < VALUES; i++) {
+        key[0] = '\0';
+        sprintf(key, "value%d", i);
+        getAndProcessValue(key, memc);
+        operations++;
+      }
+    }
+    gettimeofday(&stop, NULL);
+    timeval_subtract(&diff, &stop, &start);
+    timeinMillis = diff.tv_sec*1000.f + diff.tv_usec/1000.f;
+    printf("Took %f ms\n", timeinMillis);
+    printf("Operations: %d\n", operations);
+    printf("Throughput: %f ops/s\n", operations/(timeinMillis/1000.f));
+    printf("Average response time: %f ms\n", timeinMillis/operations);
   }
-  gettimeofday(&stop, NULL);
-  timeval_subtract(&diff, &stop, &start);
-  return diff;
 }
 
 void mapAndProcessValue(char *key) {
@@ -102,11 +130,24 @@ struct timeval getFromTmp() {
 
 int main(int argc, char **argv) {
   struct timeval diff;
-  diff = getFromMemcached();
-  printf("Took %f ms\n", diff.tv_sec*1000.f + diff.tv_usec/1000.f);
-  printf(" to get and process values from memcached");
-  diff = getFromTmp();
-  printf("Took %f ms\n", diff.tv_sec*1000.f + diff.tv_usec/1000.f);
-  printf(" to get and process values from tmp");
+  int err;
+  void *retval;
+  if (argc > 1) {
+    seconds = atoi(argv[argc - 1]);
+    err = pthread_create(&(tid), NULL, &getFromMemcached, NULL);
+    if (err) {
+      perror("can't create thread.");
+    } else {
+      printf("thread running.\n");
+      sleep(seconds);
+      running = 0;
+      sleep(2000);
+      pthread_join(tid, retval);
+    }
+  }
+  getFromMemcached((void *) &seconds);
+  //diff = getFromTmp();
+  //printf("Took %f ms\n", diff.tv_sec*1000.f + diff.tv_usec/1000.f);
+  //printf(" to get and process values from tmp");
   return 0;
 }
