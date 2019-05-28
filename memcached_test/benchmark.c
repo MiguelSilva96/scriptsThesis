@@ -137,12 +137,14 @@ int main(int argc, char **argv) {
     err = pthread_create(&(tid), NULL, &getFromMemcached, NULL);
     if (err) {
       perror("can't create thread.");
+      exit(1);
     } else {
       printf("thread running.\n");
       sleep(seconds);
       running = 0;
-      sleep(2000);
-      pthread_join(tid, retval);
+      sleep(1);
+      pthread_join(tid, &retval);
+      exit(0);
     }
   }
   getFromMemcached((void *) &seconds);
