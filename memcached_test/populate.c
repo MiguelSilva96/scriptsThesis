@@ -9,10 +9,13 @@
 #define ASCII_START 65
 #define ASCII_END 122
 
+static int sizes[] = {16000, 32000, 64000, 128000};
+
 char* generateRandomString() {
+  int size = sizes[rand() % 3];
+  char *res = malloc(size + 1);
   int i;
-  char *res = malloc(VALUE_SIZE + 1);
-  for(i = 0; i < VALUE_SIZE; i++) {
+  for(i = 0; i < size; i++) {
     res[i] = (char) (rand()%(ASCII_END-ASCII_START))+ASCII_START;
   }
   res[i] = '\0';
